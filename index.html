@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unblocked Games</title>
+
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg1:#0f1224;
+  --bg2:#1a1c3a;
+  --card:rgba(255,255,255,0.08);
+  --text:#ffffff;
+}
+
+body.light {
+  --bg1:#e9ecf4;
+  --bg2:#ffffff;
+  --card:rgba(0,0,0,0.06);
+  --text:#000000;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  min-height:100vh;
+  background: radial-gradient(circle at top, var(--bg2), var(--bg1) 70%);
+  color:var(--text);
+}
+
+header {
+  padding:1.2rem;
+  text-align:center;
+  font-size:2rem;
+  font-weight:700;
+  backdrop-filter: blur(10px);
+  background: rgba(255,255,255,0.06);
+}
+
+.controls {
+  max-width:1200px;
+  margin:1rem auto;
+  display:flex;
+  gap:1rem;
+  padding:0 1rem;
+}
+
+.controls input {
+  flex:1;
+  padding:0.6rem 1rem;
+  border-radius:999px;
+  border:none;
+  outline:none;
+}
+
+.controls button {
+  padding:0.6rem 1rem;
+  border-radius:999px;
+  border:none;
+  cursor:pointer;
+}
+
+#game-list {
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px,1fr));
+  gap:1.2rem;
+  padding:2rem;
+  max-width:1200px;
+  margin:auto;
+}
+
+.game-card {
+  background:var(--card);
+  border-radius:14px;
+  overflow:hidden;
+  cursor:pointer;
+  backdrop-filter: blur(12px);
+  transition:0.25s;
+}
+
+.game-card:hover { transform:translateY(-5px) scale(1.02); }
+
+.game-card img { width:100%; height:110px; object-fit:cover; }
+.game-card .title { padding:0.7rem; text-align:center; }
+
+#game-play { display:none; padding:1.5rem; max-width:1400px; margin:auto; }
+#game-play iframe { width:100%; height:80vh; border:none; border-radius:14px; }
+
+#back-btn, #fullscreen-btn {
+  margin-bottom:1rem;
+  padding:0.6rem 1.2rem;
+  border:none;
+  border-radius:999px;
+  cursor:pointer;
+}
+
+</style>
+</head>
+<body>
+
+<header>Unblocked Games</header>
+
+<div class="controls">
+  <input type="text" id="search" placeholder="Search games...">
+  <button onclick="toggleTheme()">🌙 / ☀️</button>
+  <button onclick="openCloak()">🕶️ Cloak</button>
+</div>
+
+<div id="game-list"></div>
+
+<div id="game-play">
+  <button id="back-btn">← Back</button>
+  <button id="fullscreen-btn">⛶ Fullscreen</button>
+  <div id="iframe-container"></div>
+</div>
+
+<script>
+// =====================
+// About:blank cloaker
+// =====================
+function openCloak() {
+  const w = window.open('about:blank', '_blank');
+  if (!w) return alert('Popup blocked. Allow popups to use cloak.');
+  try { w.opener = null; } catch (e) {}
+  const doc = w.document;
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>New Tab</title>
+    <style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100%;height:100%}</style>
+  </head><body>
+    <iframe src="${location.href}" allowfullscreen></iframe>
+  </body></html>`);
+  doc.close();
+}
+
+// =====================
+// Panic key ([)
+// =====================
+const PANIC_KEY = '['; // press [ to instantly hide
+const PANIC_ACTION = 'https://www.canva.com';
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === PANIC_KEY) {
+    location.replace(PANIC_ACTION);
+  }
+});
+
+// =====================
+// Game loader
+// =====================
+const GAMES_JSON_URL = "https://raw.githubusercontent.com/swarmintelli/Unblocked-Games-CDN/main/games.json";
+const listEl = document.getElementById("game-list");
+const playEl = document.getElementById("game-play");
+const iframeContainer = document.getElementById("iframe-container");
+const searchInput = document.getElementById("search");
+const controlsEl = document.querySelector('.controls');
+const backBtn = document.getElementById('back-btn');
+const fullscreenBtn = document.getElementById('fullscreen-btn');
+let allGames = [];
+
+async function loadGames() {
+  try {
+    const res = await fetch(GAMES_JSON_URL, { cache: 'no-cache' });
+    if (!res.ok) throw new Error('Failed to fetch games');
+    allGames = await res.json();
+    renderGames(allGames);
+  } catch (e) {
+    listEl.innerHTML = '<div style="text-align:center;padding:1rem">Failed to load games.</div>';
+    console.error(e);
+  }
+}
+
+function renderGames(games) {
+  listEl.innerHTML = '';
+  games.forEach(game => {
+    const card = document.createElement('div');
+    card.className = 'game-card';
+    card.tabIndex = 0;
+
+    const img = document.createElement('img');
+    img.src = game.game_image_icon;
+    img.alt = game.name;
+
+    const title = document.createElement('div');
+    title.className = 'title';
+    title.textContent = game.name;
+
+    card.appendChild(img);
+    card.appendChild(title);
+
+    card.onclick = () => playGame(game);
+    card.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') playGame(game);
+    };
+
+    listEl.appendChild(card);
+  });
+}
+
+function playGame(game) {
+  listEl.style.display = 'none';
+  controlsEl.style.display = 'none';
+  playEl.style.display = 'block';
+  iframeContainer.innerHTML = '';
+
+  // Extract src from provided iframe HTML
+  const match = game.iframe && game.iframe.match(/src=["']([^"']+)["']/i);
+  const src = match ? match[1] : '';
+  if (!src) {
+    iframeContainer.textContent = 'Unable to load this game.';
+    return;
+  }
+
+  const iframe = document.createElement('iframe');
+  iframe.src = src;
+  iframe.allow = 'fullscreen; autoplay; gamepad; accelerometer; gyroscope; picture-in-picture';
+  iframe.allowFullscreen = true;
+  // Relaxed sandbox for large / WebGL games
+  iframe.setAttribute('sandbox',
+    'allow-scripts allow-same-origin allow-pointer-lock allow-popups allow-forms allow-top-navigation-by-user-activation'
+  );
+  iframe.style.width = '100%';
+  iframe.style.height = '80vh';
+  iframe.style.border = 'none';
+  iframe.style.borderRadius = '14px';
+
+  iframeContainer.appendChild(iframe);
+}
+
+backBtn.onclick = () => {
+  playEl.style.display = 'none';
+  listEl.style.display = 'grid';
+  controlsEl.style.display = 'flex';
+  iframeContainer.innerHTML = '';
+};
+
+fullscreenBtn.onclick = () => {
+  const iframe = iframeContainer.querySelector('iframe');
+  if (iframe?.requestFullscreen) iframe.requestFullscreen();
+};
+
+searchInput.oninput = () => {
+  const q = searchInput.value.toLowerCase();
+  renderGames(allGames.filter(g => g.name.toLowerCase().includes(q)));
+};
+
+function toggleTheme() {
+  document.body.classList.toggle('light');
+}
+
+loadGames();
+</script>
+
+</body>
+</html>
